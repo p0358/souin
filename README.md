@@ -16,25 +16,26 @@
   5.1. [Sequence diagram](#sequence-diagram)
 6. [Cache systems](#cache-systems)
 7. [GraphQL](#graphql)  
-8. [Plugins](#plugins)  
-  8.1. [Beego filter](#beego-filter)  
-  8.2. [Caddy module](#caddy-module)  
-  8.3. [Chi middleware](#chi-middleware)  
-  8.4. [Dotweb middleware](#dotweb-middleware)  
-  8.5. [Echo middleware](#echo-middleware)  
-  8.6. [Fiber middleware](#fiber-middleware)  
-  8.7. [Gin middleware](#gin-middleware)  
-  8.8. [Goa middleware](#goa-middleware)  
-  8.9. [Go-zero middleware](#go-zero-middleware)  
-  8.10. [Goyave middleware](#goyave-middleware)  
-  8.11. [Hertz middleware](#hertz-middleware)  
-  8.12. [Kratos filter](#kratos-filter)  
-  8.13. [Roadrunner middleware](#roadrunner-middleware)  
-  8.14. [Skipper filter](#skipper-filter)  
-  8.15. [Træfik plugin](#træfik-plugin)  
-  8.16. [Tyk plugin](#tyk-plugin)  
-  8.17. [Webgo middleware](#webgo-middleware)  
-9. [Credits](#credits)
+8. [ESI](#esi)  
+9. [Plugins](#plugins)  
+  9.1. [Beego filter](#beego-filter)  
+  9.2. [Caddy module](#caddy-module)  
+  9.3. [Chi middleware](#chi-middleware)  
+  9.4. [Dotweb middleware](#dotweb-middleware)  
+  9.5. [Echo middleware](#echo-middleware)  
+  9.6. [Fiber middleware](#fiber-middleware)  
+  9.7. [Gin middleware](#gin-middleware)  
+  9.8. [Goa middleware](#goa-middleware)  
+  9.9. [Go-zero middleware](#go-zero-middleware)  
+  9.10. [Goyave middleware](#goyave-middleware)  
+  9.11. [Hertz middleware](#hertz-middleware)  
+  9.12. [Kratos filter](#kratos-filter)  
+  9.13. [Roadrunner middleware](#roadrunner-middleware)  
+  9.14. [Skipper filter](#skipper-filter)  
+  9.15. [Træfik plugin](#træfik-plugin)  
+  9.16. [Tyk plugin](#tyk-plugin)  
+  9.17. [Webgo middleware](#webgo-middleware)  
+10. [Credits](#credits)
 
 # Souin HTTP cache
 
@@ -44,7 +45,7 @@ Since it's written in go, it can be deployed on any server and thanks to the doc
 It's RFC compatible, supporting Vary, request coalescing, stale cache-control and other specifications related to the [RFC-7234](https://tools.ietf.org/html/rfc7234).  
 It supports the newly written RFCs (currently in draft) [http-cache-groups](https://datatracker.ietf.org/doc/draft-ietf-httpbis-cache-groups/) and [http-invalidation](https://datatracker.ietf.org/doc/draft-nottingham-http-invalidation/).  
 It also supports the [Cache-Status HTTP response header](https://www.rfc-editor.org/rfc/rfc9211), the YKey group such as Varnish, the [Targeted HTTP Cache Control RFC](https://www.rfc-editor.org/rfc/rfc9213), .  
-It supports the ESI tags, thanks to the [go-esi package](https://github.com/darkweak/go-esi).
+It resolves the [ESI tags](#esi) of the responses it serves, the included fragments being cached on their own.
 
 > [!WARNING]
 > Since `v1.7.0` Souin implements only one in-memory map storage. If you need a specific storage you have to take it from [the storages repository](https://github.com/darkweak/storages) and add it either in your code, during the build otherwise.  
@@ -207,6 +208,7 @@ surrogate_keys:
 | `default_cache.badger.path`                       | Configure Badger with a file                                                                                                                | `/anywhere/badger_configuration.json`                                                                                                                                                                                         |
 | `default_cache.badger.configuration`              | Configure Badger directly in the Caddyfile or your JSON caddy configuration                                                                 | [See the Badger configuration for the options](https://dgraph.io/docs/badger/get-started/)                                                                                                                                    |
 | `default_cache.default_cache_control`             | Set the default value of `Cache-Control` response header if not set by upstream (Souin treats empty `Cache-Control` as `public` if omitted) | `no-store`                                                                                                                                                                                                                    |
+| `default_cache.esi`                               | Resolve the [ESI tags](#esi) of the served responses                                                                                        | `true`<br/><br/>`(default: false)`                                                                                                                                                                                            |
 | `default_cache.etcd`                              | Configure the Etcd cache storage                                                                                                            |                                                                                                                                                                                                                               |
 | `default_cache.etcd.configuration`                | Configure Etcd directly in the Caddyfile or your JSON caddy configuration                                                                   | [See the Etcd configuration for the options](https://pkg.go.dev/go.etcd.io/etcd/clientv3#Config)                                                                                                                              |
 | `default_cache.etcd.url`                          | Set the Etcd cluster endpoint                                                                                                               | `http://etcd1:2379,http://etcd2:2379`                                                                                                                                                                                         |
@@ -414,6 +416,25 @@ The cache invalidation is built for CRUD requests, if you're doing a GET HTTP re
 If you're doing a POST, PUT, PATCH or DELETE HTTP request, the related cache GET request, and the list endpoint will be dropped.  
 It also supports invalidation via [Souin API](#souin-api) to invalidate the cache programmatically.
 
+
+## ESI
+Souin can resolve the [ESI](https://www.w3.org/TR/esi-lang/) tags of the responses it serves. A response is stored along with its tags, which are resolved every time it is served: a cached page always shows the current version of the fragments it includes, and the fragments, cached on their own, can expire or be purged without touching the page. It is disabled by default, enable it with the `default_cache.esi` key.
+```yaml
+default_cache:
+  esi: true
+```
+
+The supported tags are:
+* `<esi:include src="/fragment" alt="/fallback" onerror="continue"/>`, replaced by the fragment fetched from `src`, or from `alt` when `src` can't be fetched (network error or non-2xx status). When neither can, the include is removed and makes an enclosing `esi:try` fall back on its `esi:except`, unless `onerror="continue"` is set. A relative `src` is resolved against the URL of the page.
+* `<esi:try><esi:attempt>...</esi:attempt><esi:except>...</esi:except></esi:try>`.
+* `<esi:remove>...</esi:remove>` and `<esi:comment text="..."/>`, which are removed.
+* `<!--esi ... -->`, whose content is processed.
+
+The other ESI elements (`esi:choose`, `esi:vars`, `esi:inline`) are left as they are, and so are the tags in HTML comments and CDATA sections. The fragments may carry ESI tags themselves, the includes nested more than 5 levels deep are not resolved, which ends the include loops.
+
+The fragments of the same origin as the page are requested on behalf of the client, with its headers, while the fragments of another origin only get its `Accept`, `Accept-Language` and `User-Agent` headers. With the Caddy module, the fragments of the same site are served in process, through the site routes and the cache, without a network round-trip. Elsewhere, they are fetched over the network, from the hosts the pages name: as the client chooses the host it claims to reach, Souin never connects to it, and the includes have to use absolute URLs (e.g. `http://your-app:8080/fragment`).
+
+The assembled response gets its own `Content-Length`, and doesn't carry the `ETag` and `Last-Modified` of the stored page, as they don't identify it. The tags of a compressed response can't be resolved: the cache has to get the responses before they are compressed. The requests bypassing the cache (excluded paths, methods not allowed to be cached...) are passed through as they are.
 
 ## Plugins
 

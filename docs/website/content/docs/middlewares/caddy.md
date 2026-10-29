@@ -157,3 +157,22 @@ route /nuts-configuration {
     respond "Hello nuts"
 }
 ```
+
+#### ESI
+With the `esi` directive, the cache resolves the [ESI tags](https://www.w3.org/TR/esi-lang/) of the responses it serves. A page is stored along with its tags, which are resolved every time it is served: the cached page always shows the current version of the fragments it includes, and the fragments, cached on their own, can expire or be purged without touching the page.  
+The fragments of the site are requested in process, going through its routes like any request: when both the page and its fragments are in the cache, the page is assembled without reaching the backend.  
+The cache has to get the pages before they are compressed to resolve their tags. By default, the `encode` directive runs after the `cache` one, hence the `order encode before cache` global option below, so that the assembled page gets compressed instead.
+```caddy
+{
+    order encode before cache
+    cache {
+        esi
+    }
+}
+
+example.com {
+    encode
+    cache
+    reverse_proxy your-app:8080
+}
+```

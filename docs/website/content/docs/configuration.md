@@ -145,6 +145,11 @@ example: `public, max-age=3600`
 The distributed prefix configure if the storage must use a distributed storage. (e.g. `default_cache.distributed`).  
 default: `true`
 
+#### ESI
+The esi prefix configure if the [ESI tags](https://www.w3.org/TR/esi-lang/) of the served responses are resolved. (e.g. `default_cache.esi`).  
+The responses are stored along with their tags, which are resolved every time they are served, the included fragments being cached on their own. The supported tags are `esi:include`, `esi:try`, `esi:remove`, `esi:comment` and the `<!--esi -->` comments. The cache has to get the responses before they are compressed to resolve their tags.  
+default: `false`
+
 #### Etcd
 The etcd prefix configure the etcd storage. (e.g. `default_cache.etcd`).
 

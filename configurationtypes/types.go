@@ -283,6 +283,7 @@ type DefaultCache struct {
 	DefaultCacheControl          string        `json:"default_cache_control" yaml:"default_cache_control"`
 	MaxBodyBytes                 uint64        `json:"max_cacheable_body_bytes" yaml:"max_cacheable_body_bytes"`
 	DisableCoalescing            bool          `json:"disable_coalescing" yaml:"disable_coalescing"`
+	ESI                          bool          `json:"esi" yaml:"esi"`
 	MappingEvictionInterval      Duration      `json:"mapping_eviction_interval" yaml:"mapping_eviction_interval"`
 }
 
@@ -406,6 +407,11 @@ func (d *DefaultCache) IsCoalescingDisable() bool {
 	return d.DisableCoalescing
 }
 
+// IsESIEnabled returns if the ESI tags of the served responses are resolved
+func (d *DefaultCache) IsESIEnabled() bool {
+	return d.ESI
+}
+
 // GetMappingEvictionInterval returns the interval for mapping eviction
 func (d *DefaultCache) GetMappingEvictionInterval() time.Duration {
 	if d.MappingEvictionInterval.Duration == 0 {
@@ -440,6 +446,7 @@ type DefaultCacheInterface interface {
 	GetDefaultCacheControl() string
 	GetMaxBodyBytes() uint64
 	IsCoalescingDisable() bool
+	IsESIEnabled() bool
 	GetMappingEvictionInterval() time.Duration
 }
 

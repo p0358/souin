@@ -14,7 +14,7 @@ See the [documentation about the storages](https://docs.souin.io/docs/storages).
  * [RFC 7234](https://httpwg.org/specs/rfc7234.html) compliant HTTP Cache.
  * Sets [the `Cache-Status` HTTP Response Header](https://httpwg.org/http-extensions/draft-ietf-httpbis-cache-header.html)
  * REST API to purge the cache and list stored resources.
- * ESI tags processing (using the [go-esi package](https://github.com/darkweak/go-esi)).
+ * [ESI tags](#esi) processing, the included fragments being cached on their own.
  * Builtin support for distributed cache.
 
 ## Minimal Configuration
@@ -71,6 +71,7 @@ Here are all the available options for the global options
             service_id 123456_id
             zone_id anywhere_zone
         }
+        esi
         etcd {
             configuration {
                 # Your etcd configuration here
@@ -136,6 +137,7 @@ handle @match {
             service_id 123456_id
             zone_id anywhere_zone
         }
+        esi
         key {
             disable_body
             disable_host
@@ -153,6 +155,29 @@ handle @match {
     }
 }
 ```
+
+## ESI
+With the `esi` option, the cache resolves the [ESI](https://www.w3.org/TR/esi-lang/) tags of the responses it serves. A page is stored along with its tags, which are resolved every time it is served: the cached page always shows the current version of the fragments it includes, and the fragments, cached on their own, can expire or be purged without touching the page.
+```caddy
+{
+    order encode before cache
+    cache {
+        esi
+    }
+}
+
+example.com {
+    encode
+    cache
+    reverse_proxy your-app:8080
+}
+```
+
+The fragments of the site are requested in process, going through its routes like any request: when both the page and its fragments are in the cache, the page is assembled without reaching the backend.
+
+The cache has to get the pages before they are compressed to resolve their tags. By default, the `encode` directive runs after the `cache` one, hence the `order encode before cache` global option above, so that the assembled page gets compressed instead. The backend has to send the pages uncompressed as well.
+
+See [the ESI section of Souin](https://github.com/darkweak/souin#esi) for the supported tags.
 
 ## Provider Syntax
 
@@ -383,6 +408,7 @@ What does these directives mean?
 | `cdn.service_id`                          | The service id if required, depending the provider                                                                                           | `123456_id`                                                                                                             |
 | `cdn.zone_id`                             | The zone id if required, depending the provider                                                                                              | `anywhere_zone`                                                                                                         |
 | `default_cache_control`                   | Set the default value of `Cache-Control` response header if not set by upstream (Souin treats empty `Cache-Control` as `public` if omitted)  | `no-store`                                                                                                              |
+| `esi`                                     | Resolve the [ESI tags](#esi) of the served responses                                                                                         | `(default: disabled)`                                                                                                   |
 | `key`                                     | Override the key generation with the ability to disable unecessary parts                                                                     |                                                                                                                         |
 | `key.disable_body`                        | Disable the body part in the key (GraphQL context)                                                                                           | `true`<br/><br/>`(default: false)`                                                                                      |
 | `key.disable_host`                        | Disable the host part in the key                                                                                                             | `true`<br/><br/>`(default: false)`                                                                                      |

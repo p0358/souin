@@ -127,6 +127,17 @@ func (s *SouinCaddyMiddleware) configurationPropertyMapper() error {
 	return nil
 }
 
+// siteServer returns the Caddy server handling rq. The ESI includes of a page
+// targeting its own site are served through it, in process, going through
+// the routes and the cache a client request would.
+func siteServer(rq *http.Request) http.Handler {
+	if server, ok := rq.Context().Value(caddyhttp.ServerCtxKey).(*caddyhttp.Server); ok && server != nil {
+		return server
+	}
+
+	return nil
+}
+
 func isProviderEmpty(c configurationtypes.CacheProvider) bool {
 	return !c.Found
 }
@@ -226,6 +237,9 @@ func (s *SouinCaddyMiddleware) FromApp(app *SouinApp) error {
 	if dc.MaxBodyBytes == 0 {
 		s.Configuration.DefaultCache.MaxBodyBytes = appDc.MaxBodyBytes
 	}
+	if !dc.ESI {
+		s.Configuration.DefaultCache.ESI = appDc.ESI
+	}
 	if dc.CacheName == "" {
 		s.Configuration.DefaultCache.CacheName = appDc.CacheName
 	}
@@ -280,6 +294,9 @@ func (s *SouinCaddyMiddleware) Provision(ctx caddy.Context) error {
 	s.parseStorages(ctx)
 
 	bh := middleware.NewHTTPCacheHandler(&s.Configuration)
+	if bh.ESI != nil {
+		bh.ESI.Local = siteServer
+	}
 	surrogates, ok := up.LoadOrStore(surrogate_key, bh.SurrogateKeyStorer)
 	if ok {
 		bh.SurrogateKeyStorer = surrogates.(surrogates_providers.SurrogateInterface)

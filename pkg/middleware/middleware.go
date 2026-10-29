@@ -26,6 +26,7 @@ import (
 	"github.com/darkweak/souin/helpers"
 	"github.com/darkweak/souin/pkg/api"
 	"github.com/darkweak/souin/pkg/api/prometheus"
+	"github.com/darkweak/souin/pkg/esi"
 	"github.com/darkweak/souin/pkg/rfc"
 	"github.com/darkweak/souin/pkg/storage"
 	"github.com/darkweak/souin/pkg/storage/types"
@@ -252,6 +253,11 @@ func NewHTTPCacheHandler(c configurationtypes.AbstractConfigurationInterface) *S
 	evictionCtx, _ := signal.NotifyContext(baseCtx.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	registerMappingKeysEviction(evictionCtx, c.GetLogger(), storers, c.GetDefaultCache().GetMappingEvictionInterval())
 
+	var esiProcessor *esi.Processor
+	if c.GetDefaultCache().IsESIEnabled() {
+		esiProcessor = &esi.Processor{Logger: c.GetLogger()}
+	}
+
 	return &SouinBaseHandler{
 		Configuration:            c,
 		Storers:                  storers,
@@ -264,6 +270,7 @@ func NewHTTPCacheHandler(c configurationtypes.AbstractConfigurationInterface) *S
 		bufPool:                  bufPool,
 		storersLen:               len(storers),
 		singleflightPool:         singleflight.Group{},
+		ESI:                      esiProcessor,
 	}
 }
 
@@ -276,6 +283,7 @@ type SouinBaseHandler struct {
 	SurrogateKeys            configurationtypes.SurrogateKeys
 	SurrogateKeyStorer       providers.SurrogateInterface
 	DefaultMatchedUrl        configurationtypes.URL
+	ESI                      *esi.Processor
 	context                  *context.Context
 	singleflightPool         singleflight.Group
 	bufPool                  *sync.Pool
@@ -1180,6 +1188,7 @@ func (s *SouinBaseHandler) ServeHTTP(rw http.ResponseWriter, rq *http.Request, n
 	}()
 
 	customWriter := NewCustomWriter(req, rw, bufPool)
+	customWriter.ESI = s.ESI
 	customWriter.Headers.Add("Range", req.Header.Get("Range"))
 	req.Header.Del("Range")
 

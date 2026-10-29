@@ -1004,8 +1004,6 @@ func TestDisabledVaryHandler(t *testing.T) {
 	}
 }
 
-/*
-TODO: add opt-in to parse ESI
 func TestESITags(t *testing.T) {
 	tester := caddytest.NewTester(t)
 	tester.InitServer(`
@@ -1014,6 +1012,7 @@ func TestESITags(t *testing.T) {
 		http_port     9080
 		https_port    9443
 		cache {
+			esi
 			ttl 1000s
 		}
 	}
@@ -1068,7 +1067,6 @@ func TestESITags(t *testing.T) {
 		t.Error("Cache-Status should be already stored")
 	}
 }
-*/
 
 func TestCacheableStatusCode(t *testing.T) {
 	caddyTester := caddytest.NewTester(t)

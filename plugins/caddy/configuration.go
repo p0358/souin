@@ -60,6 +60,8 @@ type DefaultCache struct {
 	Stale configurationtypes.Duration `json:"stale"`
 	// Disable the coalescing system.
 	DisableCoalescing bool `json:"disable_coalescing"`
+	// Resolve the ESI tags of the served responses.
+	ESI bool `json:"esi"`
 	// MappingEvictionInterval interval between eviction
 	MappingEvictionInterval configurationtypes.Duration `json:"mapping_eviction_interval"`
 }
@@ -187,6 +189,11 @@ func (d *DefaultCache) GetMaxBodyBytes() uint64 {
 // IsCoalescingDisable returns if the coalescing is disabled
 func (d *DefaultCache) IsCoalescingDisable() bool {
 	return d.DisableCoalescing
+}
+
+// IsESIEnabled returns if the ESI tags of the served responses are resolved
+func (d *DefaultCache) IsESIEnabled() bool {
+	return d.ESI
 }
 
 // Configuration holder
@@ -774,6 +781,8 @@ func parseConfiguration(cfg *Configuration, h *caddyfile.Dispenser, isGlobal boo
 				}
 			case "disable_coalescing":
 				cfg.DefaultCache.DisableCoalescing = true
+			case "esi":
+				cfg.DefaultCache.ESI = true
 			case "mapping_eviction_interval":
 				args := h.RemainingArgs()
 				interval, err := time.ParseDuration(args[0])
